@@ -1,0 +1,15 @@
+- name: Cisco IOS Test
+  hosts: routers
+  gather_facts: no
+
+  tasks:
+
+    - name: Run show command
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: output
+
+    - name: Print output
+      debug:
+        var: output.stdout_lines
