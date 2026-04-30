@@ -1,5 +1,6 @@
 # Virtual environments
 ansible-env/
+ansible-venv/
 venv/
 .env/
 
