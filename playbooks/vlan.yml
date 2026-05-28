@@ -1,0 +1,99 @@
+- name: Configure VLAN
+  hosts: routers
+  gather_facts: no
+
+  tasks:
+
+    - name: Check VLAN
+      cisco.ios.ios_command:
+        commands:
+          - show vlan brief
+      register: vlan_config
+      changed_when: false
+      failed_when: false
+
+    - name: Create VLAN
+      cisco.ios.ios_config:
+        parents: "vlan {{ vlan_id }}"
+        lines:
+          - "name {{ vlan_name }}"
+      register: vlan_result
+      when: >
+        not ((vlan_config.stdout | default(['']) | first) is search('(?m)^\s*' ~ (vlan_id | string) ~ '\s+' ~ vlan_name ~ '\s+'))
+
+    - name: Check VLAN Interface
+      cisco.ios.ios_command:
+        commands:
+          - "show running-config interface {{ interface_name }}"
+      register: vlan_interface_config
+      changed_when: false
+      failed_when: false
+
+    - name: Configure VLAN Interface
+      cisco.ios.ios_config:
+        parents: "interface {{ interface_name }}"
+        lines:
+          - "ip address {{ interface_ip }} {{ interface_mask }}"
+          - no shutdown
+      register: vlan_interface_result
+      when: >
+        ('ip address ' ~ interface_ip ~ ' ' ~ interface_mask) not in (vlan_interface_config.stdout | default(['']) | first)
+        or ' shutdown' in (vlan_interface_config.stdout | default(['']) | first)
+
+    - name: Check Access Port Config
+      cisco.ios.ios_command:
+        commands:
+          - "show running-config interface {{ access_interface }}"
+      register: access_port_config
+      changed_when: false
+      failed_when: false
+
+    - name: Check Access Port State
+      cisco.ios.ios_command:
+        commands:
+          - "show interfaces {{ access_interface }} switchport"
+      register: access_port_state
+      changed_when: false
+      failed_when: false
+
+    - name: Configure Access Port
+      cisco.ios.ios_config:
+        parents: "interface {{ access_interface }}"
+        lines:
+          - switchport mode access
+          - "switchport access vlan {{ vlan_id }}"
+          - no shutdown
+      register: access_port_result
+      when: >
+        'Administrative Mode: static access' not in (access_port_state.stdout | default(['']) | first)
+        or ('Access Mode VLAN: ' ~ vlan_id) not in (access_port_state.stdout | default(['']) | first)
+        or ' shutdown' in (access_port_config.stdout | default(['']) | first)
+
+    - name: Save Configuration
+      cisco.ios.ios_config:
+        save_when: always
+      register: save_result
+      when: >
+        vlan_result.changed | default(false)
+        or vlan_interface_result.changed | default(false)
+        or access_port_result.changed | default(false)
+
+    - name: Show Change Summary
+      debug:
+        msg:
+          - "Create VLAN changed: {{ vlan_result.changed | default(false) }}"
+          - "Configure VLAN Interface changed: {{ vlan_interface_result.changed | default(false) }}"
+          - "Configure Access Port changed: {{ access_port_result.changed | default(false) }}"
+          - "Save Configuration changed: {{ save_result.changed | default(false) }}"
+
+    - name: Verify VLAN
+      cisco.ios.ios_command:
+        commands:
+          - show vlan brief
+          - show ip interface brief
+      register: output
+      changed_when: false
+
+    - name: Print Output
+      debug:
+        var: output.stdout_lines
