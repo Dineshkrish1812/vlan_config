@@ -10,3 +10,6 @@ __pycache__/
 
 # Ansible
 *.retry
+
+# GitHub Actions runner
+actions-runner/

@@ -5,11 +5,11 @@ ansible_network_os: cisco.ios.ios
 ansible_network_cli_ssh_type: paramiko
 ansible_command_timeout: 120
 
-vlan_id: 50
-vlan_name: Network
+vlan_id: 60
+vlan_name: Automation
 
 interface_name: "Vlan{{ vlan_id }}"
-interface_ip: 10.30.0.1
+interface_ip: 10.50.0.1
 interface_mask: 255.255.255.0
 
 access_interface: GigabitEthernet0/1
